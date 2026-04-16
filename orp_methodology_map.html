@@ -1,0 +1,553 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>ORP Shading Strategy — Methodology Map</title>
+<style>
+  @import url('https://fonts.googleapis.com/css2?family=DM+Mono:wght@400;500&family=DM+Sans:wght@300;400;500&display=swap');
+
+  *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+  :root {
+    --bg: #0f1117;
+    --bg2: #161b26;
+    --bg3: #1e2535;
+    --border: rgba(255,255,255,0.08);
+    --border-hover: rgba(255,255,255,0.18);
+    --text-primary: #e8e6df;
+    --text-secondary: #8a8880;
+    --text-tertiary: #555350;
+    --teal-fill: #0d3d35;
+    --teal-border: #1d6b5e;
+    --teal-text: #6ecfbe;
+    --coral-fill: #3d1a10;
+    --coral-border: #7a3520;
+    --coral-text: #f0825a;
+    --amber-fill: #3a2a08;
+    --amber-border: #7a5a14;
+    --amber-text: #f0b942;
+    --purple-fill: #1e1435;
+    --purple-border: #4a3280;
+    --purple-text: #b49ef0;
+    --gray-fill: #1a1e28;
+    --gray-border: #2e3448;
+    --gray-text: #9ca3b0;
+    --green-fill: #0d2e18;
+    --green-border: #1e6038;
+    --green-text: #6ecf94;
+  }
+
+  html, body {
+    background: var(--bg);
+    color: var(--text-primary);
+    font-family: 'DM Sans', sans-serif;
+    font-weight: 300;
+    min-height: 100vh;
+    -webkit-font-smoothing: antialiased;
+  }
+
+  header {
+    padding: 32px 48px 24px;
+    border-bottom: 1px solid var(--border);
+    display: flex;
+    align-items: flex-end;
+    justify-content: space-between;
+    gap: 24px;
+  }
+
+  .header-left h1 {
+    font-family: 'DM Mono', monospace;
+    font-weight: 500;
+    font-size: 13px;
+    letter-spacing: 0.12em;
+    text-transform: uppercase;
+    color: var(--text-secondary);
+    margin-bottom: 6px;
+  }
+
+  .header-left h2 {
+    font-size: 22px;
+    font-weight: 400;
+    color: var(--text-primary);
+    line-height: 1.2;
+  }
+
+  .header-right {
+    font-family: 'DM Mono', monospace;
+    font-size: 11px;
+    color: var(--text-tertiary);
+    text-align: right;
+    line-height: 1.8;
+    white-space: nowrap;
+  }
+
+  .map-container {
+    padding: 40px 48px 60px;
+    max-width: 900px;
+    margin: 0 auto;
+  }
+
+  /* Phase rail */
+  .phase-label {
+    font-family: 'DM Mono', monospace;
+    font-size: 10px;
+    letter-spacing: 0.14em;
+    text-transform: uppercase;
+    color: var(--text-tertiary);
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    margin-bottom: 12px;
+    margin-top: 28px;
+  }
+  .phase-label::after {
+    content: '';
+    flex: 1;
+    height: 1px;
+    background: var(--border);
+  }
+  .phase-label:first-child { margin-top: 0; }
+
+  /* Node rows */
+  .row { display: flex; gap: 16px; margin-bottom: 0; }
+  .row.center { justify-content: center; }
+
+  /* Connector */
+  .connector {
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    height: 32px;
+    position: relative;
+  }
+  .connector::before {
+    content: '';
+    position: absolute;
+    top: 0; bottom: 8px;
+    left: 50%;
+    width: 1px;
+    background: var(--border);
+  }
+  .connector::after {
+    content: '';
+    position: absolute;
+    bottom: 0;
+    left: 50%;
+    transform: translateX(-50%);
+    width: 0; height: 0;
+    border-left: 4px solid transparent;
+    border-right: 4px solid transparent;
+    border-top: 5px solid var(--border-hover);
+  }
+
+  .connector-split {
+    display: flex;
+    justify-content: center;
+    height: 36px;
+    position: relative;
+    margin: 0 0;
+  }
+
+  /* Node cards */
+  .node {
+    flex: 1;
+    border-radius: 8px;
+    padding: 14px 18px;
+    border: 1px solid var(--border);
+    background: var(--bg2);
+    cursor: pointer;
+    transition: border-color 0.2s, background 0.2s, transform 0.15s;
+    position: relative;
+    overflow: hidden;
+  }
+  .node::before {
+    content: '';
+    position: absolute;
+    inset: 0;
+    opacity: 0;
+    transition: opacity 0.2s;
+    background: rgba(255,255,255,0.02);
+  }
+  .node:hover::before { opacity: 1; }
+  .node:hover { border-color: var(--border-hover); transform: translateY(-1px); }
+
+  .node-title {
+    font-size: 13px;
+    font-weight: 500;
+    line-height: 1.3;
+    margin-bottom: 3px;
+  }
+  .node-sub {
+    font-size: 11px;
+    font-weight: 300;
+    line-height: 1.5;
+    opacity: 0.7;
+  }
+
+  /* Color variants */
+  .node.teal   { background: var(--teal-fill);   border-color: var(--teal-border); }
+  .node.teal   .node-title { color: var(--teal-text); }
+  .node.teal   .node-sub   { color: var(--teal-text); opacity: 0.65; }
+
+  .node.coral  { background: var(--coral-fill);  border-color: var(--coral-border); }
+  .node.coral  .node-title { color: var(--coral-text); }
+  .node.coral  .node-sub   { color: var(--coral-text); opacity: 0.65; }
+
+  .node.amber  { background: var(--amber-fill);  border-color: var(--amber-border); }
+  .node.amber  .node-title { color: var(--amber-text); }
+  .node.amber  .node-sub   { color: var(--amber-text); opacity: 0.65; }
+
+  .node.purple { background: var(--purple-fill); border-color: var(--purple-border); }
+  .node.purple .node-title { color: var(--purple-text); }
+  .node.purple .node-sub   { color: var(--purple-text); opacity: 0.65; }
+
+  .node.gray   { background: var(--gray-fill);   border-color: var(--gray-border); }
+  .node.gray   .node-title { color: var(--gray-text); }
+  .node.gray   .node-sub   { color: var(--gray-text); opacity: 0.65; }
+
+  .node.green  { background: var(--green-fill);  border-color: var(--green-border); }
+  .node.green  .node-title { color: var(--green-text); }
+  .node.green  .node-sub   { color: var(--green-text); opacity: 0.65; }
+
+  /* Split connector SVG */
+  .split-svg { width: 100%; overflow: visible; }
+
+  /* Tooltip / detail panel */
+  .detail-panel {
+    position: fixed;
+    bottom: 24px; right: 24px;
+    width: 320px;
+    background: var(--bg3);
+    border: 1px solid var(--border-hover);
+    border-radius: 10px;
+    padding: 18px 20px;
+    opacity: 0;
+    transform: translateY(8px);
+    transition: opacity 0.25s, transform 0.25s;
+    pointer-events: none;
+    z-index: 100;
+  }
+  .detail-panel.visible {
+    opacity: 1;
+    transform: translateY(0);
+    pointer-events: all;
+  }
+  .detail-tag {
+    font-family: 'DM Mono', monospace;
+    font-size: 10px;
+    letter-spacing: 0.1em;
+    text-transform: uppercase;
+    color: var(--text-tertiary);
+    margin-bottom: 8px;
+  }
+  .detail-title {
+    font-size: 14px;
+    font-weight: 500;
+    color: var(--text-primary);
+    margin-bottom: 6px;
+    line-height: 1.4;
+  }
+  .detail-body {
+    font-size: 12px;
+    font-weight: 300;
+    color: var(--text-secondary);
+    line-height: 1.7;
+  }
+  .detail-close {
+    position: absolute;
+    top: 12px; right: 14px;
+    font-size: 16px;
+    color: var(--text-tertiary);
+    cursor: pointer;
+    background: none;
+    border: none;
+    line-height: 1;
+    padding: 2px 4px;
+  }
+  .detail-close:hover { color: var(--text-primary); }
+
+  footer {
+    padding: 20px 48px;
+    border-top: 1px solid var(--border);
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+  }
+  footer span {
+    font-family: 'DM Mono', monospace;
+    font-size: 10px;
+    color: var(--text-tertiary);
+    letter-spacing: 0.08em;
+  }
+
+  @media (max-width: 640px) {
+    header { padding: 20px 20px 16px; flex-direction: column; align-items: flex-start; }
+    .map-container { padding: 24px 20px 40px; }
+    footer { padding: 16px 20px; flex-direction: column; gap: 6px; }
+    .detail-panel { right: 12px; bottom: 12px; width: calc(100vw - 24px); }
+  }
+</style>
+</head>
+<body>
+
+<header>
+  <div class="header-left">
+    <h1>Advanced Daylighting Design · Final Project</h1>
+    <h2>ORP Shading Strategy — Methodology Map</h2>
+  </div>
+  <div class="header-right">
+    One Riverwalk Place · San Antonio, TX<br>
+    Lat. 29.4°N · South facade<br>
+    Rooms 728 &amp; 1060A
+  </div>
+</header>
+
+<div class="map-container">
+
+  <!-- SITE -->
+  <div class="phase-label">Site conditions</div>
+  <div class="row center">
+    <div class="node gray" style="max-width:480px" onclick="showDetail('site')">
+      <div class="node-title">One Riverwalk Place, San Antonio, TX</div>
+      <div class="node-sub">South facade · Lat. 29.4°N · BSh climate (hot semi-arid)</div>
+    </div>
+  </div>
+
+  <!-- SPLIT to rooms -->
+  <div style="height:36px;position:relative;margin:0 auto;max-width:480px">
+    <svg width="100%" height="36" style="overflow:visible;display:block">
+      <line x1="50%" y1="0" x2="50%" y2="18" stroke="rgba(255,255,255,0.12)" stroke-width="1"/>
+      <line x1="50%" y1="18" x2="20%" y2="18" stroke="rgba(255,255,255,0.12)" stroke-width="1"/>
+      <line x1="50%" y1="18" x2="80%" y2="18" stroke="rgba(255,255,255,0.12)" stroke-width="1"/>
+      <line x1="20%" y1="18" x2="20%" y2="36" stroke="rgba(255,255,255,0.12)" stroke-width="1" marker-end="url(#arr)"/>
+      <line x1="80%" y1="18" x2="80%" y2="36" stroke="rgba(255,255,255,0.12)" stroke-width="1" marker-end="url(#arr)"/>
+      <defs>
+        <marker id="arr" viewBox="0 0 10 10" refX="5" refY="8" markerWidth="5" markerHeight="5" orient="auto">
+          <path d="M1 2L5 8L9 2" fill="none" stroke="rgba(255,255,255,0.25)" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/>
+        </marker>
+      </defs>
+    </svg>
+  </div>
+
+  <!-- PROBLEM -->
+  <div class="phase-label">Room conditions</div>
+  <div class="row">
+    <div class="node teal" onclick="showDetail('r728')">
+      <div class="node-title">Room 728 — 7th floor</div>
+      <div class="node-sub">Obstructed sky · lower peak illuminance · priority: light redistribution</div>
+    </div>
+    <div class="node coral" onclick="showDetail('r1060a')">
+      <div class="node-title">Room 1060A — 10th floor</div>
+      <div class="node-sub">Unobstructed sky · high direct solar · priority: solar control</div>
+    </div>
+  </div>
+
+  <!-- CONVERGE -->
+  <div style="height:36px;position:relative">
+    <svg width="100%" height="36" style="overflow:visible;display:block">
+      <line x1="25%" y1="0" x2="25%" y2="18" stroke="rgba(255,255,255,0.12)" stroke-width="1"/>
+      <line x1="75%" y1="0" x2="75%" y2="18" stroke="rgba(255,255,255,0.12)" stroke-width="1"/>
+      <line x1="25%" y1="18" x2="75%" y2="18" stroke="rgba(255,255,255,0.12)" stroke-width="1"/>
+      <line x1="50%" y1="18" x2="50%" y2="36" stroke="rgba(255,255,255,0.12)" stroke-width="1" marker-end="url(#arr)"/>
+    </svg>
+  </div>
+
+  <div class="row center">
+    <div class="node amber" style="max-width:600px" onclick="showDetail('problem')">
+      <div class="node-title">Core daylighting problem identified</div>
+      <div class="node-sub">Perimeter overexposure + rear-zone deficiency · Occupants close blinds → lose all useful daylight simultaneously<br>Freewan &amp; Al Dalala (2020) · Masoud et al. (2024)</div>
+    </div>
+  </div>
+
+  <div class="connector"></div>
+
+  <!-- LITERATURE -->
+  <div class="phase-label">Literature synthesis</div>
+  <div class="row center">
+    <div class="node gray" style="max-width:600px" onclick="showDetail('framework')">
+      <div class="node-title">Dual-category review framework</div>
+      <div class="node-sub">Solar control sources · Light redistribution sources</div>
+    </div>
+  </div>
+
+  <!-- SPLIT to tables -->
+  <div style="height:36px;position:relative;margin:0 auto;max-width:600px">
+    <svg width="100%" height="36" style="overflow:visible;display:block">
+      <line x1="50%" y1="0" x2="50%" y2="18" stroke="rgba(255,255,255,0.12)" stroke-width="1"/>
+      <line x1="50%" y1="18" x2="25%" y2="18" stroke="rgba(255,255,255,0.12)" stroke-width="1"/>
+      <line x1="50%" y1="18" x2="75%" y2="18" stroke="rgba(255,255,255,0.12)" stroke-width="1"/>
+      <line x1="25%" y1="18" x2="25%" y2="36" stroke="rgba(255,255,255,0.12)" stroke-width="1" marker-end="url(#arr)"/>
+      <line x1="75%" y1="18" x2="75%" y2="36" stroke="rgba(255,255,255,0.12)" stroke-width="1" marker-end="url(#arr)"/>
+    </svg>
+  </div>
+
+  <div class="row">
+    <div class="node coral" onclick="showDetail('table1')">
+      <div class="node-title">Table 1 — Solar control</div>
+      <div class="node-sub">Overhangs · H-louvers · Vertical fins · Perforated louvers · Low-e glazing<br><br>Freewan 2020 · Uribe 2019 · Tominaga 2024 · Norouziasas 2025</div>
+    </div>
+    <div class="node teal" onclick="showDetail('table2')">
+      <div class="node-title">Table 2 — Light redistribution</div>
+      <div class="node-sub">Light shelves · Reflective louvers · High-VT glazing · Prismatic film<br><br>Masoud 2024 · Lo Verso 2020 · Meresi 2016 · Assimakopoulos 2022</div>
+    </div>
+  </div>
+
+  <!-- CONVERGE to key finding -->
+  <div style="height:36px;position:relative">
+    <svg width="100%" height="36" style="overflow:visible;display:block">
+      <line x1="25%" y1="0" x2="25%" y2="18" stroke="rgba(255,255,255,0.12)" stroke-width="1"/>
+      <line x1="75%" y1="0" x2="75%" y2="18" stroke="rgba(255,255,255,0.12)" stroke-width="1"/>
+      <line x1="25%" y1="18" x2="75%" y2="18" stroke="rgba(255,255,255,0.12)" stroke-width="1"/>
+      <line x1="50%" y1="18" x2="50%" y2="36" stroke="rgba(255,255,255,0.12)" stroke-width="1" marker-end="url(#arr)"/>
+    </svg>
+  </div>
+
+  <!-- KEY FINDING -->
+  <div class="phase-label">Key finding</div>
+  <div class="row center">
+    <div class="node purple" style="max-width:640px" onclick="showDetail('finding')">
+      <div class="node-title">Neither category works alone — integration is the strategy</div>
+      <div class="node-sub">Lower window zone → solar control blocks direct radiation<br>Upper window zone → light redirection bounces daylight onto ceiling and into rear<br>Freewan &amp; Al Dalala (2020) · Masoud et al. (2024)</div>
+    </div>
+  </div>
+
+  <!-- SPLIT to calibration -->
+  <div style="height:36px;position:relative;margin:0 auto;max-width:640px">
+    <svg width="100%" height="36" style="overflow:visible;display:block">
+      <line x1="50%" y1="0" x2="50%" y2="18" stroke="rgba(255,255,255,0.12)" stroke-width="1"/>
+      <line x1="50%" y1="18" x2="25%" y2="18" stroke="rgba(255,255,255,0.12)" stroke-width="1"/>
+      <line x1="50%" y1="18" x2="75%" y2="18" stroke="rgba(255,255,255,0.12)" stroke-width="1"/>
+      <line x1="25%" y1="18" x2="25%" y2="36" stroke="rgba(255,255,255,0.12)" stroke-width="1" marker-end="url(#arr)"/>
+      <line x1="75%" y1="18" x2="75%" y2="36" stroke="rgba(255,255,255,0.12)" stroke-width="1" marker-end="url(#arr)"/>
+    </svg>
+  </div>
+
+  <!-- DESIGN -->
+  <div class="phase-label">Room-specific calibration</div>
+  <div class="row">
+    <div class="node teal" onclick="showDetail('cal728')">
+      <div class="node-title">Room 728 — calibrated system</div>
+      <div class="node-sub">High-reflectance light shelf · 0.80 m depth at 2.00 m AFF · 10–20° inclination<br>High-VT glazing in upper band<br>Shallow overhang (preserve view, avoid reducing diffuse sky access)</div>
+    </div>
+    <div class="node coral" onclick="showDetail('cal1060a')">
+      <div class="node-title">Room 1060A — calibrated system</div>
+      <div class="node-sub">Deep overhang sized to summer VSA (lat. 29.4°N)<br>Perforated louvers 5–20% ratio, 120 mm spacing<br>Light shelf in upper 80 cm zone</div>
+    </div>
+  </div>
+
+  <!-- CONVERGE to targets -->
+  <div style="height:36px;position:relative">
+    <svg width="100%" height="36" style="overflow:visible;display:block">
+      <line x1="25%" y1="0" x2="25%" y2="18" stroke="rgba(255,255,255,0.12)" stroke-width="1"/>
+      <line x1="75%" y1="0" x2="75%" y2="18" stroke="rgba(255,255,255,0.12)" stroke-width="1"/>
+      <line x1="25%" y1="18" x2="75%" y2="18" stroke="rgba(255,255,255,0.12)" stroke-width="1"/>
+      <line x1="50%" y1="18" x2="50%" y2="36" stroke="rgba(255,255,255,0.12)" stroke-width="1" marker-end="url(#arr)"/>
+    </svg>
+  </div>
+
+  <div class="phase-label">Performance targets</div>
+  <div class="row center">
+    <div class="node green" style="max-width:640px" onclick="showDetail('targets')">
+      <div class="node-title">Verified performance targets</div>
+      <div class="node-sub">
+        sDA 96–100% · ASE 0% · UDI-a &gt;70–75% · DGPs class A · Uniformity ratio &gt;0.5<br>
+        Room 728: UDI-a &gt;70% rows 3–4 · minimize artificial lighting dependency<br>
+        Room 1060A: sDA 96–100% · ASE 0% · DGPs class A throughout occupied hours
+      </div>
+    </div>
+  </div>
+
+</div>
+
+<footer>
+  <span>Advanced Daylighting Design · April 2026</span>
+  <span>Click any node for detail</span>
+</footer>
+
+<!-- Detail panel -->
+<div class="detail-panel" id="detailPanel">
+  <button class="detail-close" onclick="closeDetail()">×</button>
+  <div class="detail-tag" id="detailTag"></div>
+  <div class="detail-title" id="detailTitle"></div>
+  <div class="detail-body" id="detailBody"></div>
+</div>
+
+<script>
+const details = {
+  site: {
+    tag: 'Site context',
+    title: 'One Riverwalk Place, San Antonio TX',
+    body: 'South-facing glazed facade at latitude 29.4°N in a BSh (hot semi-arid) climate. Two classrooms studied: Room 728 (7F, obstructed) and Room 1060A (10F, unobstructed). High solar angles in summer (up to ~84° at noon on June 21) drive aggressive solar control requirements.'
+  },
+  r728: {
+    tag: 'Room 728 · 7th floor',
+    title: 'Urban obstruction context',
+    body: 'Adjacent buildings partially obstruct the sky, reducing direct solar penetration. Peak illuminance is lower than the unobstructed floor above. The design priority shifts from blocking sun to redistributing what diffuse sky is available as deep into the room as possible.'
+  },
+  r1060a: {
+    tag: 'Room 1060A · 10th floor',
+    title: 'Full sky exposure context',
+    body: 'No obstructions. Full direct solar beam enters throughout the day. High Annual Solar Exposure (ASE) and glare risk are the primary problems. The design must aggressively block or filter direct radiation before it enters the occupied zone.'
+  },
+  problem: {
+    tag: 'Core problem',
+    title: 'The south-facing classroom daylighting paradox',
+    body: 'Perimeter zone: UDI drops below 10% of target range within 2 m of the facade — chronically overlit, causing glare and discomfort.\n\nRear zone: illuminance below 300 lux at depths >5 m — insufficient for productive visual tasks.\n\nOccupant response: without proper shading, users close blinds fully, eliminating both glare AND useful daylight simultaneously. Sources: Freewan & Al Dalala (2020), Masoud et al. (2024).'
+  },
+  framework: {
+    tag: 'Literature framework',
+    title: 'Dual-category review structure',
+    body: 'The review was organized around two functional categories: (1) components that reduce or block excessive solar radiation, and (2) components that increase daylight penetration and improve distribution. This framing reflects the physical logic of a hybrid system: the lower window zone handles blocking, the upper zone handles redistribution.'
+  },
+  table1: {
+    tag: 'Table 1 · Solar control',
+    title: 'Blocking and attenuation components',
+    body: 'Horizontal overhangs (Freewan 2020) — effective for high-angle summer sun at lat. 25–40°N.\n\nFixed H-louvers (Tominaga 2024) — sDA 100%, ASE −9.38% with optimised spacing.\n\nVertical fins (Norouziasas 2025) — ASE reduced up to 36.25%.\n\nPerforated external louvers (Uribe 2019) — sDA 96–100%, ASE 0%, DGPs class A simultaneously.\n\nLow-transmittance glazing (Masoud 2024) — permanent passive baseline layer.'
+  },
+  table2: {
+    tag: 'Table 2 · Light redistribution',
+    title: 'Penetration and distribution components',
+    body: 'Light shelf combined (Masoud 2024) — reflects daylight up to 10 m deep; dual shading + redistribution function.\n\nExternal light shelf (Lo Verso 2020) — increased UDI in first 6 m; 20–30° inclination optimal.\n\nReflective louvers upper zone (Freewan 2020) — 150–750 lux uniform coverage across work plane.\n\nHigh-VT clerestory glazing (Assimakopoulos 2022) — diffuse sky reach 6–8 m deep.\n\nPrismatic film / diffusing screens (Masoud 2024) — improves uniformity ratio, retrofittable.'
+  },
+  finding: {
+    tag: 'Key finding · Decision node',
+    title: 'The hybrid system principle',
+    body: 'The literature synthesis revealed that solar control components and light redistribution components have complementary failure modes: overhangs and louvers alone leave the rear zone dark; light shelves alone cannot handle peak direct solar loads.\n\nThe integration principle: lower window zone → block / attenuate direct radiation; upper window zone → redirect daylight onto ceiling and into rear. Neither works alone. Their combination is the strategy.\n\nSources: Freewan & Al Dalala (2020), Masoud et al. (2024).'
+  },
+  cal728: {
+    tag: 'Room 728 · Calibration',
+    title: 'Light redistribution priority system',
+    body: '1. High-reflectance external light shelf — 0.80 m depth at 2.00 m AFF, inclined 10–20°. Redirects diffuse sky onto ceiling even on partly-obstructed days.\n\n2. High-VT glazing in upper band — creates clerestory-like performance, sDA improvement 6–8 m deep (Assimakopoulos et al. 2022).\n\n3. Shallow overhang — modest solar control only; deep overhangs would further reduce diffuse sky access. Prioritise view preservation.\n\nTarget: UDI-a >70% at rows 3–4, uniformity ratio >0.5.'
+  },
+  cal1060a: {
+    tag: 'Room 1060A · Calibration',
+    title: 'Solar control priority system',
+    body: '1. Deep overhang sized to summer VSA — Lat. 29.4°N summer solar noon altitude ~84°. Full exclusion at June 21 noon. Reduces EUI up to 14.95% (Tominaga et al. 2024).\n\n2. Perforated louvers or H-louver array — 5–20% perforation, 120 mm spacing. sDA 96–100%, ASE 0%, DGPs class A simultaneously.\n\n3. Light shelf in upper 80 cm zone — dual function: solar control + deep-zone redistribution.\n\nTarget: sDA 96–100%, ASE 0%, UDI-a >75% full plane, DGPs class A.'
+  },
+  targets: {
+    tag: 'Performance targets',
+    title: 'Climate-Based Daylight Metrics (CBDM)',
+    body: 'Room 1060A targets: sDA 96–100% · ASE 0% · UDI-a >75% full work plane · DGPs class A (imperceptible glare) throughout occupied hours.\n\nRoom 728 targets: UDI-a >70% at rows 3–4 (mid/rear zone) · Uniformity ratio >0.5 · Minimise artificial lighting dependency.\n\nAll metrics to be verified via Climate-Based Daylight Modelling (CBDM) simulation. Parameters derived from peer-reviewed simulation studies cited in literature review Section 7.'
+  }
+};
+
+function showDetail(key) {
+  const d = details[key];
+  if (!d) return;
+  document.getElementById('detailTag').textContent = d.tag;
+  document.getElementById('detailTitle').textContent = d.title;
+  document.getElementById('detailBody').textContent = d.body;
+  document.getElementById('detailPanel').classList.add('visible');
+}
+
+function closeDetail() {
+  document.getElementById('detailPanel').classList.remove('visible');
+}
+
+document.addEventListener('keydown', e => {
+  if (e.key === 'Escape') closeDetail();
+});
+</script>
+</body>
+</html>
